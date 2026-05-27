@@ -25,6 +25,7 @@ find_package(dvl_msgs REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 
 set(node_plugins "")
@@ -46,6 +47,7 @@ ament_target_dependencies(dvl_a50_component
   "rclcpp_lifecycle"
   "std_msgs"
   "dvl_msgs")
+target_link_libraries(dvl_a50_component nlohmann_json::nlohmann_json)
   
 rclcpp_components_register_nodes(dvl_a50_component "composition::LifecycleDVL")
 set(node_plugins "${node_plugins}composition::LifecycleDVL;$<TARGET_FILE:dvl_a50_component>\n")
@@ -57,6 +59,7 @@ ament_target_dependencies(${PROJECT_NAME}_sensor rclcpp
     "sensor_msgs" 
     "geometry_msgs" 
     "dvl_msgs")
+target_link_libraries(${PROJECT_NAME}_sensor nlohmann_json::nlohmann_json)
 
 
 #Install C++ targets

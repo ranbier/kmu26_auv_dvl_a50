@@ -24,7 +24,7 @@
 #include "dvl_msgs/msg/command_response.hpp"
 #include "dvl_msgs/msg/config_status.hpp"
 
-#include "dvl_a50/json/single_include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include <iomanip>
 
 using namespace std::chrono_literals;

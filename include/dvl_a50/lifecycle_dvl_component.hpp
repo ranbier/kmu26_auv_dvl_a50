@@ -20,7 +20,7 @@
 #include "dvl_msgs/msg/dvldr.hpp"
 
 //Json Library
-#include "dvl_a50/json/single_include/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include <iomanip>
 
 namespace lc = rclcpp_lifecycle;
