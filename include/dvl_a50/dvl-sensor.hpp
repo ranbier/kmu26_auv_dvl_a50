@@ -60,6 +60,9 @@ private:
     std::string ip_address;
     std::string velocity_frame_id;
     std::string position_frame_id;
+    bool configure_acoustic_on_startup;
+    bool startup_acoustic_enabled;
+    bool request_config_on_startup;
     TCPSocket *tcpSocket;
     json json_data;
 

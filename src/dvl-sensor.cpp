@@ -33,10 +33,16 @@ Node("dvl_a50_node")
     this->declare_parameter<std::string>("dvl_ip_address", "192.168.194.95");
     this->declare_parameter<std::string>("velocity_frame_id", "dvl_A50/velocity_link");
     this->declare_parameter<std::string>("position_frame_id", "dvl_A50/position_link");
+    this->declare_parameter<bool>("configure_acoustic_on_startup", false);
+    this->declare_parameter<bool>("startup_acoustic_enabled", true);
+    this->declare_parameter<bool>("request_config_on_startup", true);
     
     velocity_frame_id = this->get_parameter("velocity_frame_id").as_string();
     position_frame_id = this->get_parameter("position_frame_id").as_string();
     ip_address = this->get_parameter("dvl_ip_address").as_string();
+    configure_acoustic_on_startup = this->get_parameter("configure_acoustic_on_startup").as_bool();
+    startup_acoustic_enabled = this->get_parameter("startup_acoustic_enabled").as_bool();
+    request_config_on_startup = this->get_parameter("request_config_on_startup").as_bool();
     RCLCPP_INFO(get_logger(), "IP_ADDRESS: '%s'", ip_address.c_str());
 
     //--- TCP/IP SOCKET ---- 
@@ -83,11 +89,21 @@ Node("dvl_a50_node")
     else
         RCLCPP_INFO(get_logger(), "DVL-A50 connected!");
     
-    /*
-     * Disable transducer operation to limit sensor heating out of water.
-     */
-    this->set_json_parameter("acoustic_enabled", "false");
-    usleep(2000);
+    if (configure_acoustic_on_startup) {
+        const auto value = startup_acoustic_enabled ? "true" : "false";
+        RCLCPP_INFO(get_logger(), "Setting DVL acoustic_enabled=%s on startup", value);
+        this->set_json_parameter("acoustic_enabled", value);
+        usleep(2000);
+    } else {
+        RCLCPP_INFO(get_logger(), "Leaving DVL acoustic_enabled unchanged on startup");
+    }
+
+    if (request_config_on_startup) {
+        json command = {
+            {"command", "get_config"}
+        };
+        this->send_parameter_to_sensor(command);
+    }
 
 }
 
