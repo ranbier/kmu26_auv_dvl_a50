@@ -115,7 +115,7 @@ DVL_A50::~DVL_A50() {
 
 void DVL_A50::handle_receive()
 {
-    char *tempBuffer = new char[1];
+    char tempBuffer[1] = {'\0'};
 
     //tcpSocket->Receive(&tempBuffer[0]);
     std::string str; 
@@ -132,13 +132,14 @@ void DVL_A50::handle_receive()
         {
             json_data = json::parse(str);
 
-            if (json_data.contains("altitude")) {
+            const auto type = json_data.value("type", std::string());
+            if (type == "velocity" || type == "velocity_water") {
                 this->publish_vel_trans_report();
             }
-            else if (json_data.contains("pitch")) {
+            else if (type == "position_local") {
                 this->publish_dead_reckoning_report();
             }
-            else if (json_data.contains("response_to"))
+            else if (type == "response" || json_data.contains("response_to"))
             {
                 if(json_data["response_to"] == "set_config"
                 || json_data["response_to"] == "calibrate_gyro"
@@ -332,8 +333,8 @@ DVL_Parameters DVL_A50::resolveParameter(std::string param)
 	    return acoustic_enabled;
 	else if(param == "dark_mode_enabled")
 	    return dark_mode_enabled;
-	else if(param == "mountig_rotation_offset")
-	    return mountig_rotation_offset;
+	else if(param == "mounting_rotation_offset" || param == "mountig_rotation_offset")
+	    return mounting_rotation_offset;
 	else if(param == "range_mode")
 	    return range_mode;
 
@@ -390,10 +391,10 @@ void DVL_A50::set_json_parameter(const std::string name, const std::string value
             }
             break;
 
-        case mountig_rotation_offset:
+        case mounting_rotation_offset:
             try
             {
-                message["parameters"]["mountig_rotation_offset"] = (double)std::stod(value);
+                message["parameters"]["mounting_rotation_offset"] = (double)std::stod(value);
                 this->send_parameter_to_sensor(message);
             }
             catch(const std::exception& e)

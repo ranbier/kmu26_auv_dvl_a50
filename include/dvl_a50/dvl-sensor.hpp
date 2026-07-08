@@ -39,7 +39,7 @@ enum DVL_Parameters {
     speed_of_sound,
     acoustic_enabled,
     dark_mode_enabled,
-    mountig_rotation_offset,
+    mounting_rotation_offset,
     range_mode,
     invalid_param
 };

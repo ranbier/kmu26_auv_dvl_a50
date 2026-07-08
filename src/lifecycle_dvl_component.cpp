@@ -179,7 +179,7 @@ void LifecycleDVL::on_timer()
       //RCLCPP_INFO(get_logger(), "Lifecycle publisher is currently inactive. Messages are not published.");
   }else {
         std::flush(std::cout);
-        char *tempBuffer = new char[1];
+        char tempBuffer[1] = {'\0'};
 
         //tcpSocket->Receive(&tempBuffer[0]);
         std::string str; 
@@ -200,7 +200,8 @@ void LifecycleDVL::on_timer()
 	{
             json_data = json::parse(str);
 		
-            if (json_data.contains("altitude")) {
+            const auto type = json_data.value("type", std::string());
+            if (type == "velocity" || type == "velocity_water") {
 		
 		dvl.header.stamp = rclcpp_lifecycle::LifecycleNode::now();
 		dvl.header.frame_id = "dvl_A50_report_link";
@@ -258,7 +259,7 @@ void LifecycleDVL::on_timer()
 		dvl_pub_report->publish(dvl);
 		
             }
-            else //if (json_data.contains("pitch")) 
+            else if (type == "position_local")
             {
 		//std::cout << std::setw(4) << json_data << std::endl;
 		DVLDeadReckoning.header.stamp = rclcpp_lifecycle::LifecycleNode::now();
