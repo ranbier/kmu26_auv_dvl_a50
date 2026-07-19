@@ -32,8 +32,8 @@ Node("dvl_a50_node")
     dvl_sub_config_command = this->create_subscription<dvl_msgs::msg::ConfigCommand>("dvl/config/command", command_qos, std::bind(&DVL_A50::command_subscriber, this, _1));
 
     this->declare_parameter<std::string>("dvl_ip_address", "192.168.194.95");
-    this->declare_parameter<std::string>("velocity_frame_id", "dvl_A50/velocity_link");
-    this->declare_parameter<std::string>("position_frame_id", "dvl_A50/position_link");
+    this->declare_parameter<std::string>("velocity_frame_id", "dvl_link");
+    this->declare_parameter<std::string>("position_frame_id", "dvl_link");
     this->declare_parameter<bool>("configure_acoustic_on_startup", false);
     this->declare_parameter<bool>("startup_acoustic_enabled", true);
     this->declare_parameter<bool>("request_config_on_startup", true);

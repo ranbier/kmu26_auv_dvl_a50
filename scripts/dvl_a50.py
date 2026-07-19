@@ -153,7 +153,7 @@ class DVL_A50(Node):
         now = self.get_clock().now().to_msg()
 
         theDVL.header.stamp = now
-        theDVL.header.frame_id = "dvl_50_link"
+        theDVL.header.frame_id = "dvl_link"
 
         if 'time' in data:
             theDVL.time = float(data["time"])
@@ -209,7 +209,7 @@ class DVL_A50(Node):
         if 'ts' in data:
 
             DVLDeadReckoning.header.stamp = now
-            DVLDeadReckoning.header.frame_id = "dvl_50_link"
+            DVLDeadReckoning.header.frame_id = "dvl_link"
 
             DVLDeadReckoning.time = float(data["ts"])
             DVLDeadReckoning.position.x = float(data["x"])

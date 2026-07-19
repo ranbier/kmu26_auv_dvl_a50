@@ -204,7 +204,7 @@ void LifecycleDVL::on_timer()
             if (type == "velocity" || type == "velocity_water") {
 		
 		dvl.header.stamp = rclcpp_lifecycle::LifecycleNode::now();
-		dvl.header.frame_id = "dvl_A50_report_link";
+		dvl.header.frame_id = "dvl_link";
 		//std::cout << std::setw(4) << json_data << std::endl;
 		
 		dvl.time = double(json_data["time"]);
@@ -263,7 +263,7 @@ void LifecycleDVL::on_timer()
             {
 		//std::cout << std::setw(4) << json_data << std::endl;
 		DVLDeadReckoning.header.stamp = rclcpp_lifecycle::LifecycleNode::now();
-		DVLDeadReckoning.header.frame_id = "dvl_A50_position_link";
+		DVLDeadReckoning.header.frame_id = "dvl_link";
 		DVLDeadReckoning.time = double(json_data["ts"]);
 		DVLDeadReckoning.position.x = double(json_data["x"]);
 		DVLDeadReckoning.position.y = double(json_data["y"]);

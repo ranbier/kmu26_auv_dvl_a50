@@ -8,8 +8,8 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
     return launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument('ip_address', default_value='192.168.194.95'),
-        launch.actions.DeclareLaunchArgument('velocity_frame_id', default_value='dvl'),
-        launch.actions.DeclareLaunchArgument('position_frame_id', default_value='dvl'),
+        launch.actions.DeclareLaunchArgument('velocity_frame_id', default_value='dvl_link'),
+        launch.actions.DeclareLaunchArgument('position_frame_id', default_value='dvl_link'),
         launch.actions.DeclareLaunchArgument('configure_acoustic_on_startup', default_value='false'),
         launch.actions.DeclareLaunchArgument('startup_acoustic_enabled', default_value='true'),
         launch.actions.DeclareLaunchArgument('request_config_on_startup', default_value='true'),
