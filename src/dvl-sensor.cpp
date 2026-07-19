@@ -20,15 +20,16 @@ Node("dvl_a50_node")
             qos_profile.history,
             qos_profile.depth),
             qos_profile);
+    auto command_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
 
     timer_receive = this->create_wall_timer(std::chrono::milliseconds(50),std::bind(&DVL_A50::handle_receive, this));
 
     //Publishers
     dvl_pub_report = this->create_publisher<dvl_msgs::msg::DVL>("dvl/data", qos);
     dvl_pub_pos = this->create_publisher<dvl_msgs::msg::DVLDR>("dvl/position", qos);
-    dvl_pub_config_status = this->create_publisher<dvl_msgs::msg::ConfigStatus>("dvl/config/status", qos);
-    dvl_pub_command_response = this->create_publisher<dvl_msgs::msg::CommandResponse>("dvl/command/response", qos);
-    dvl_sub_config_command = this->create_subscription<dvl_msgs::msg::ConfigCommand>("dvl/config/command", qos, std::bind(&DVL_A50::command_subscriber, this, _1));
+    dvl_pub_config_status = this->create_publisher<dvl_msgs::msg::ConfigStatus>("dvl/config/status", command_qos);
+    dvl_pub_command_response = this->create_publisher<dvl_msgs::msg::CommandResponse>("dvl/command/response", command_qos);
+    dvl_sub_config_command = this->create_subscription<dvl_msgs::msg::ConfigCommand>("dvl/config/command", command_qos, std::bind(&DVL_A50::command_subscriber, this, _1));
 
     this->declare_parameter<std::string>("dvl_ip_address", "192.168.194.95");
     this->declare_parameter<std::string>("velocity_frame_id", "dvl_A50/velocity_link");
@@ -115,45 +116,71 @@ DVL_A50::~DVL_A50() {
 
 void DVL_A50::handle_receive()
 {
-    char tempBuffer[1] = {'\0'};
+    if(fault != 0)
+        return;
 
-    //tcpSocket->Receive(&tempBuffer[0]);
-    std::string str; 
-    
-    if(fault == 0)
+    char byte = '\0';
+    while(true)
     {
-        while(tempBuffer[0] != '\n')
+        const int received = tcpSocket->Receive(&byte);
+        if(received == 1)
         {
-            if(tcpSocket->Receive(tempBuffer) !=0)
-                str = str + tempBuffer[0];
-        }
-		
-        try
-        {
-            json_data = json::parse(str);
-
-            const auto type = json_data.value("type", std::string());
-            if (type == "velocity" || type == "velocity_water") {
-                this->publish_vel_trans_report();
-            }
-            else if (type == "position_local") {
-                this->publish_dead_reckoning_report();
-            }
-            else if (type == "response" || json_data.contains("response_to"))
+            if(byte != '\n')
             {
-                if(json_data["response_to"] == "set_config"
-                || json_data["response_to"] == "calibrate_gyro"
-                || json_data["response_to"] == "reset_dead_reckoning")
-                    this->publish_command_response();
-                else if(json_data["response_to"] == "get_config")
-                    this->publish_config_status();
+                receive_buffer.push_back(byte);
+                if(receive_buffer.size() > 1024 * 1024)
+                {
+                    RCLCPP_ERROR(get_logger(), "DVL TCP line exceeded 1 MiB; discarding it");
+                    receive_buffer.clear();
+                }
+                continue;
             }
-        }
-        catch(std::exception& e)
-        {
-            std::cout << "Exception: " << e.what() << std::endl;
-        }
 
+            std::string str;
+            str.swap(receive_buffer);
+            if(str.empty())
+                return;
+
+            try
+            {
+                json_data = json::parse(str);
+
+                const auto type = json_data.value("type", std::string());
+                if (type == "velocity" || type == "velocity_water") {
+                    this->publish_vel_trans_report();
+                }
+                else if (type == "position_local") {
+                    this->publish_dead_reckoning_report();
+                }
+                else if (type == "response" || json_data.contains("response_to"))
+                {
+                    if(json_data["response_to"] == "set_config"
+                    || json_data["response_to"] == "calibrate_gyro"
+                    || json_data["response_to"] == "reset_dead_reckoning")
+                        this->publish_command_response();
+                    else if(json_data["response_to"] == "get_config")
+                        this->publish_config_status();
+                }
+            }
+            catch(std::exception& e)
+            {
+                RCLCPP_WARN(get_logger(), "Invalid DVL TCP JSON: %s", e.what());
+            }
+            return;
+        }
+        if(received == 0)
+        {
+            fault = -1;
+            RCLCPP_ERROR(get_logger(), "DVL TCP connection closed by peer");
+            return;
+        }
+        if(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+        {
+            return;
+        }
+        fault = -1;
+        RCLCPP_ERROR(get_logger(), "DVL TCP receive failed: %s", strerror(errno));
+        return;
     }
 }
 
@@ -277,6 +304,18 @@ void DVL_A50::publish_command_response()
     dvl_pub_command_response->publish(command_resp);
 }
 
+void DVL_A50::publish_transport_error(const std::string &command)
+{
+    dvl_msgs::msg::CommandResponse command_resp;
+    command_resp.response_to = command;
+    command_resp.success = false;
+    command_resp.error_message = "DVL TCP transport is unavailable";
+    command_resp.result = 0;
+    command_resp.format = "driver";
+    command_resp.type = "response";
+    dvl_pub_command_response->publish(command_resp);
+}
+
 /*
  * Publish the sensor current configuration
  */
@@ -306,21 +345,24 @@ void DVL_A50::command_subscriber(const dvl_msgs::msg::ConfigCommand::SharedPtr m
         json command = {
             {"command", "get_config"}
         };
-        this->send_parameter_to_sensor(command);
+        if(!this->send_parameter_to_sensor(command))
+            this->publish_transport_error(msg->command);
     }
     else if(msg->command == "calibrate_gyro")
     {
         json command = {
             {"command", "calibrate_gyro"}
         };
-        this->send_parameter_to_sensor(command);
+        if(!this->send_parameter_to_sensor(command))
+            this->publish_transport_error(msg->command);
     }
     else if(msg->command == "reset_dead_reckoning")
     {
         json command = {
             {"command", "reset_dead_reckoning"}
         };
-        this->send_parameter_to_sensor(command);
+        if(!this->send_parameter_to_sensor(command))
+            this->publish_transport_error(msg->command);
     }
 
 }
@@ -425,11 +467,23 @@ void DVL_A50::set_json_parameter(const std::string name, const std::string value
 /*
  * Send parameter to the sensor using the JSON command
  */
-void DVL_A50::send_parameter_to_sensor(const json &message)
+bool DVL_A50::send_parameter_to_sensor(const json &message)
 {
+    if(fault != 0)
+    {
+        RCLCPP_ERROR(get_logger(), "Cannot send DVL command: TCP transport is unavailable");
+        return false;
+    }
+
     std::string str = message.dump();
-    char* c = &*str.begin();
-    tcpSocket->Send(c);
+    str.push_back('\n');
+    const int sent = tcpSocket->Send(str.data(), str.size());
+    if(sent != static_cast<int>(str.size()))
+    {
+        RCLCPP_ERROR(get_logger(), "Failed to send complete DVL command: %s", strerror(errno));
+        return false;
+    }
+    return true;
 }
 
 }//end namespace

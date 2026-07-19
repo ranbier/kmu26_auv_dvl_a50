@@ -63,6 +63,7 @@ private:
     bool configure_acoustic_on_startup;
     bool startup_acoustic_enabled;
     bool request_config_on_startup;
+    std::string receive_buffer;
     TCPSocket *tcpSocket;
     json json_data;
 
@@ -86,10 +87,11 @@ private:
     void publish_dead_reckoning_report();
     void publish_config_status();
     void publish_command_response();
+    void publish_transport_error(const std::string &command);
 
     void command_subscriber(const dvl_msgs::msg::ConfigCommand::SharedPtr msg);
     void set_json_parameter(const std::string name, const std::string value);
-    void send_parameter_to_sensor(const json &message);
+    bool send_parameter_to_sensor(const json &message);
 
 };
 

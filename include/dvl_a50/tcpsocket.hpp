@@ -2,6 +2,8 @@
 #define TCPSOCKET_H
 
 #include <stdio.h>
+#include <cerrno>
+#include <cstddef>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
@@ -135,9 +137,27 @@ public:
         return recv(this->sock, tempBuffer, buffer_size, 0);
     }
 
-    void Send(char *tempBuffer)
+    int Send(const char *tempBuffer, std::size_t length)
     {
-        send(this->sock, tempBuffer, strlen(tempBuffer), 0);
+        std::size_t total = 0;
+        while (total < length)
+        {
+            const auto written = send(
+                this->sock,
+                tempBuffer + total,
+                length - total,
+                MSG_NOSIGNAL);
+            if (written < 0)
+            {
+                if (errno == EINTR)
+                    continue;
+                return -1;
+            }
+            if (written == 0)
+                return -1;
+            total += static_cast<std::size_t>(written);
+        }
+        return static_cast<int>(total);
     }
     
     void Close(void)
